@@ -63,8 +63,9 @@ Choose ONE of the following options:
         - `Results Sheet`: Will be populated after scraping.  
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*STEP 2: ⚙️ AUTOMATE SCRAPING WITH EXCEL*  
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+STEP 2: ⚙️ AUTOMATE SCRAPING WITH EXCEL
+---------------------------------------
 
    ➤ Open the file **Macro_Automation.xlsm**.  
    ➤ Two sheets are available:  
