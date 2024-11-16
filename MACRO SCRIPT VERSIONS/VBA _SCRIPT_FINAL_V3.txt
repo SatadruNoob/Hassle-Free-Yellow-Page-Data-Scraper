@@ -1,0 +1,90 @@
+Sub RunScraperMacro()
+    Dim inputWorkbook As Workbook
+    Dim macroWorkbook As Workbook
+    Dim wsResults As Worksheet
+    Dim macroInputSheet As Worksheet
+    Dim macroResultSheet As Worksheet
+    Dim statusFile As String
+    Dim pythonScript As String
+    Dim directoryPath As String
+    Dim shellCommand As String
+    Dim fileSystem As Object
+    Dim fileStream As Object
+    Dim statusText As String
+
+    On Error GoTo ErrorHandler
+
+    ' Define paths
+    directoryPath = ThisWorkbook.Path
+    statusFile = directoryPath & "\status.txt"
+    pythonScript = "scraper_script.py"
+
+    ' Construct the shell command
+    shellCommand = "cmd.exe /k cd """ & directoryPath & """ && """ & pythonScript & """"
+
+    ' Delete existing status.txt file, if present
+    Set fileSystem = CreateObject("Scripting.FileSystemObject")
+    If fileSystem.FileExists(statusFile) Then
+        fileSystem.DeleteFile statusFile
+    End If
+
+    ' Open the business_listings.xlsx and set sheets
+    Set inputWorkbook = Workbooks.Open(directoryPath & "\business_listings.xlsx")
+    Set macroWorkbook = ThisWorkbook
+    Set macroInputSheet = macroWorkbook.Sheets("Macro_Automation_Input")
+    Set macroResultSheet = macroWorkbook.Sheets("Macro_Automation_Result")
+
+    ' Copy input data to the "Input Sheet" of business_listings.xlsx
+    macroInputSheet.Range("A2:D2").Copy Destination:=inputWorkbook.Sheets("Input Sheet").Range("A2:D2")
+    inputWorkbook.Sheets("Input Sheet").Range("E2").Value = "Run"
+
+    ' Save and close input workbook
+    inputWorkbook.Save
+    inputWorkbook.Close
+
+    ' Execute Python script
+    Shell shellCommand, vbNormalFocus
+
+    ' Wait for Python script to finish by checking status.txt
+    Do While True
+        ' Check if status.txt exists
+        If fileSystem.FileExists(statusFile) Then
+            ' Open the file and read its content
+            Set fileStream = fileSystem.OpenTextFile(statusFile, 1)
+            statusText = fileStream.ReadAll
+            fileStream.Close
+
+            ' If the content contains "Complete", exit the loop
+            If InStr(1, statusText, "Complete", vbTextCompare) > 0 Then
+                Exit Do
+            End If
+        End If
+
+        ' Allow other processes to run and wait for 1 second before checking again
+        DoEvents
+        Application.Wait Now + TimeValue("0:00:01")
+    Loop
+
+    ' Reopen business_listings.xlsx to access Results Sheet
+    Set inputWorkbook = Workbooks.Open(directoryPath & "\business_listings.xlsx")
+    Set wsResults = inputWorkbook.Sheets("Results Sheet")
+
+    ' Clear old data from Macro_Automation_Result sheet
+    macroResultSheet.Cells.ClearContents
+
+    ' Copy results to Macro_Automation_Result sheet
+    wsResults.UsedRange.Copy Destination:=macroResultSheet.Range("A1")
+
+    ' Save macro workbook
+    macroWorkbook.Save
+
+    ' Close the input workbook
+    inputWorkbook.Close
+
+    MsgBox "Python script execution completed successfully!", vbInformation
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "An error occurred: " & Err.Description, vbCritical
+End Sub

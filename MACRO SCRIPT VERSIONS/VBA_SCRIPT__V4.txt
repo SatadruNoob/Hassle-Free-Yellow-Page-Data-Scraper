@@ -1,0 +1,136 @@
+Dim scrapingInProgress As Boolean
+
+Sub StartScraper()
+    ' Check if scraper is already running
+    If scrapingInProgress Then
+        MsgBox "Scraper is currently running. Please wait until it completes."
+        Exit Sub
+    End If
+
+    ' Set scraping status to in-progress
+    scrapingInProgress = True
+    UpdateCellStatus "Running", RGB(255, 0, 0)  ' Red cell when running
+
+    On Error GoTo ErrorHandler  ' Start error handling
+
+    ' Call the Python script to start scraping
+    Call RunPythonScraper
+
+    ' Monitor the script status
+    WaitForScraperCompletion
+
+    Exit Sub  ' Ensure Exit Sub before reaching ErrorHandler in normal flow
+
+ErrorHandler:
+    ' Handle errors gracefully
+    scrapingInProgress = False
+    UpdateCellStatus "Error", RGB(255, 255, 0)  ' Yellow cell for errors
+    MsgBox "An error occurred while running the scraper. Please check and try again."
+End Sub
+
+Sub UpdateCellStatus(status As String, color As Long)
+    ' Update cell E3 color and text based on the status
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("Input Sheet")
+    
+    With ws.Range("E3")
+        .Value = status
+        .Interior.Color = color
+    End With
+End Sub
+
+Sub RunPythonScraper()
+    ' Define the paths dynamically based on the workbook's directory
+    Dim baseDir As String
+    Dim pythonExe As String, scriptPath As String
+    baseDir = ThisWorkbook.Path  ' Use the workbook's directory
+    pythonExe = baseDir & "\.venv\Scripts\python.exe"  ' Example path to virtual environment Python
+    scriptPath = baseDir & "\scraper_script.py"       ' Example path to the Python script
+
+    Dim shell As Object
+    Dim command As String
+    Dim process As Object
+    Dim output As String, errors As String
+    Set shell = CreateObject("WScript.Shell")
+
+    On Error GoTo ErrorHandler
+
+    ' Construct the command
+    command = """" & pythonExe & """ """ & scriptPath & """"
+
+    ' Execute the command and capture standard output and error
+    Set process = shell.Exec(command)
+    
+    Do While process.Status = 0
+        DoEvents
+    Loop
+
+    ' Read the standard output and error streams
+    output = process.StdOut.ReadAll
+    errors = process.StdErr.ReadAll
+
+    ' If there are errors, raise an error
+    If Len(errors) > 0 Then
+        Err.Raise vbObjectError + 1, , "Python script error: " & errors
+    End If
+
+    ' Optionally log the output for debugging
+    Debug.Print output
+
+    Exit Sub
+
+ErrorHandler:
+    Dim errorMessage As String
+    errorMessage = "Error #" & Err.Number & ": " & Err.Description
+    MsgBox errorMessage
+    scrapingInProgress = False
+    UpdateCellStatus "Error", RGB(255, 255, 0)  ' Yellow cell for errors
+End Sub
+
+
+Sub WaitForScraperCompletion()
+    ' Get the base directory from the workbook location
+    Dim baseDir As String
+    baseDir = ThisWorkbook.Path  ' Use the workbook's directory
+
+    Dim statusFilePath As String
+    statusFilePath = baseDir & "\status.txt"  ' Combine base directory with the file name
+
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    
+    Dim startTime As Single
+    startTime = Timer  ' Start the timeout timer
+
+    Do
+        Application.Wait Now + TimeValue("0:00:01")  ' Wait 1 second between checks
+        DoEvents
+
+        If fso.FileExists(statusFilePath) Then
+            Dim txt As Object
+            Dim status As String
+            Set txt = fso.OpenTextFile(statusFilePath, 1)  ' Open as read-only
+            status = txt.ReadAll
+            txt.Close
+            
+            If status = "Complete" Then Exit Do
+            If Left(status, 5) = "Error" Then
+                MsgBox "Error detected: " & status, vbCritical
+                Exit Do
+            End If
+        End If
+
+        ' Timeout check
+        If Timer - startTime > 300 Then
+            MsgBox "Scraping timed out. Please check the Python script or status file."
+            Exit Do
+        End If
+    Loop
+
+    ' Clean up after completion
+    scrapingInProgress = False
+    UpdateCellStatus "Ready", RGB(0, 255, 0)  ' Green cell when ready
+    
+    ' Delete the status file to reset for next run
+    If fso.FileExists(statusFilePath) Then fso.DeleteFile statusFilePath
+End Sub
