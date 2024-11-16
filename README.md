@@ -60,12 +60,13 @@ Choose ONE of the following options:
       - **business_listings.xlsx** is created in the same folder.  
       - It contains:  
         - `Input Sheet`: Provide search terms, locations, etc.  
-        - `Results Sheet`: Will be populated after scraping.  
+        - `Results Sheet`: Will be populated after scraping.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+----------------------------------------
 STEP 2: ⚙️ AUTOMATE SCRAPING WITH EXCEL
----------------------------------------
+----------------------------------------
 
    ➤ Open the file **Macro_Automation.xlsm**.  
    ➤ Two sheets are available:  
